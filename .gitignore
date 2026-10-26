@@ -11,3 +11,4 @@ wheels/
 .ruff_cache/
 db_meta.json
 data/
+*.tmp
