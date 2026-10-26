@@ -1,4 +1,5 @@
 from primitive_db.constants import VALID_TYPES
+from primitive_db.decorators import confirm_action, handle_db_errors, log_time
 
 
 def validate_name(name):
@@ -16,6 +17,7 @@ def table_exists(metadata, table_name):
     return True
 
 
+@handle_db_errors
 def create_table(metadata, table_name, columns):
     """Создаёт схему таблицы с целочисленным ID в начале."""
     validate_name(table_name)
@@ -43,6 +45,8 @@ def create_table(metadata, table_name, columns):
     return {**metadata, table_name: schema}
 
 
+@handle_db_errors
+@confirm_action("удаление таблицы")
 def drop_table(metadata, table_name):
     """Возвращает метаданные без указанной таблицы."""
     if not table_exists(metadata, table_name):
@@ -61,6 +65,8 @@ def validate_fields(schema, fields, allow_id=True):
             raise ValueError(f"Некорректное значение: {value}. Попробуйте снова.")
 
 
+@handle_db_errors
+@log_time
 def insert(metadata, table_name, table_data, values):
     """Проверяет новую запись и возвращает данные с добавленным ID."""
     if not table_exists(metadata, table_name):
@@ -84,11 +90,14 @@ def matches(row, where_clause):
     )
 
 
+@handle_db_errors
+@log_time
 def select(table_data, where_clause=None):
     """Возвращает копии всех записей или записей по условию."""
     return [row.copy() for row in table_data if matches(row, where_clause or {})]
 
 
+@handle_db_errors
 def update(table_data, set_clause, where_clause):
     """Возвращает полную таблицу с изменениями, не трогая исходные записи."""
     return [
@@ -97,6 +106,8 @@ def update(table_data, set_clause, where_clause):
     ]
 
 
+@handle_db_errors
+@confirm_action("удаление записей")
 def delete(table_data, where_clause):
     """Возвращает таблицу без подходящих под условие записей."""
     return [row.copy() for row in table_data if not matches(row, where_clause)]

@@ -1,8 +1,11 @@
+import json
+
 import prompt
 from prettytable import PrettyTable
 
 from primitive_db import core
 from primitive_db.constants import DATA_COMMANDS, HELP_TEXT, META_FILE, TABLE_COMMANDS
+from primitive_db.decorators import create_cacher
 from primitive_db.parser import parse_command, parse_data_command
 from primitive_db.utils import (
     delete_table_file,
@@ -48,6 +51,8 @@ def run_table_command(command, args, metadata):
         if len(args) != 1:
             raise ValueError("Укажите имя одной таблицы.")
         table_name = args[0]
+        if not core.table_exists(metadata, table_name):
+            return False
         updated = core.drop_table(metadata, table_name)
         if updated is not None:
             delete_table_file(table_name)
@@ -66,7 +71,7 @@ def print_rows(schema, rows):
     print(table)
 
 
-def run_data_command(command, args, metadata):
+def run_data_command(command, args, metadata, cache_result):
     """Загружает данные, выполняет CRUD и сохраняет успешные изменения."""
     parsed = parse_data_command(command, args)
     table_name = parsed["table_name"]
@@ -92,7 +97,8 @@ def run_data_command(command, args, metadata):
     where = parsed["where"]
     core.validate_fields(schema, where or {})
     if command == "select":
-        rows = core.select(data, where)
+        key = (table_name, json.dumps(where, sort_keys=True, ensure_ascii=False))
+        rows = cache_result(key, lambda: core.select(data, where))
         if rows is not None:
             print_rows(schema, rows)
         return False
@@ -124,6 +130,7 @@ def run_data_command(command, args, metadata):
 def run():
     """Читает команды до выхода из программы."""
     welcome()
+    cache_result = create_cacher()
     while True:
         try:
             text = prompt.string("Введите команду: ").strip()
@@ -132,6 +139,7 @@ def run():
             break
         try:
             command, args = parse_command(text)
+            changed = False
             if command in ("help", "exit"):
                 if args:
                     raise ValueError(f"У {command} нет аргументов.")
@@ -139,10 +147,14 @@ def run():
                     break
                 print_help()
             elif command in TABLE_COMMANDS:
-                run_table_command(command, args, load_metadata(META_FILE))
+                changed = run_table_command(command, args, load_metadata(META_FILE))
             elif command in DATA_COMMANDS:
-                run_data_command(command, args, load_metadata(META_FILE))
+                changed = run_data_command(
+                    command, args, load_metadata(META_FILE), cache_result
+                )
             elif command:
                 print(f"Функции {command} нет. Попробуйте снова.")
+            if changed:
+                cache_result = create_cacher()
         except (ValueError, KeyError, OSError) as error:
             print(error)
