@@ -1,4 +1,4 @@
-from primitive_db.constants import VALID_TYPES
+from primitive_db.constants import ID_COLUMN, ID_TYPE, VALID_TYPES
 from primitive_db.decorators import confirm_action, handle_db_errors, log_time
 
 
@@ -26,7 +26,7 @@ def create_table(metadata, table_name, columns):
         return None
     if not columns:
         raise ValueError("Укажите столбцы и их типы.")
-    schema = {"ID": "int"}
+    schema = {ID_COLUMN: ID_TYPE}
     names = set()
     for column in columns:
         parts = column.split(":")
@@ -39,7 +39,7 @@ def create_table(metadata, table_name, columns):
         if name in names:
             raise ValueError(f"Столбец {name} указан повторно.")
         names.add(name)
-        if name == "ID" and data_type != "int":
+        if name == ID_COLUMN and data_type != ID_TYPE:
             raise ValueError("Столбец ID должен иметь тип int.")
         schema[name] = data_type
     return {**metadata, table_name: schema}
@@ -59,7 +59,7 @@ def validate_fields(schema, fields, allow_id=True):
     for name, value in fields.items():
         if name not in schema:
             raise ValueError(f'Ошибка: Столбец "{name}" не существует.')
-        if name == "ID" and not allow_id:
+        if name == ID_COLUMN and not allow_id:
             raise ValueError("Изменять ID нельзя.")
         if type(value).__name__ != schema[name]:
             raise ValueError(f"Некорректное значение: {value}. Попробуйте снова.")
@@ -72,13 +72,13 @@ def insert(metadata, table_name, table_data, values):
     if not table_exists(metadata, table_name):
         return None
     schema = metadata[table_name]
-    columns = [name for name in schema if name != "ID"]
+    columns = [name for name in schema if name != ID_COLUMN]
     if len(values) != len(columns):
         raise ValueError(f"Нужно значений: {len(columns)}, получено: {len(values)}.")
     fields = dict(zip(columns, values))
     validate_fields(schema, fields)
-    next_id = max((row["ID"] for row in table_data), default=0) + 1
-    record = {"ID": next_id, **fields}
+    next_id = max((row[ID_COLUMN] for row in table_data), default=0) + 1
+    record = {ID_COLUMN: next_id, **fields}
     return [row.copy() for row in table_data] + [record]
 
 

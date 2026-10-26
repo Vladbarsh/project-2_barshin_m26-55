@@ -12,3 +12,4 @@ wheels/
 db_meta.json
 data/
 *.tmp
+*.cast
