@@ -4,7 +4,13 @@ import prompt
 from prettytable import PrettyTable
 
 from primitive_db import core
-from primitive_db.constants import DATA_COMMANDS, HELP_TEXT, META_FILE, TABLE_COMMANDS
+from primitive_db.constants import (
+    DATA_COMMANDS,
+    HELP_TEXT,
+    ID_COLUMN,
+    META_FILE,
+    TABLE_COMMANDS,
+)
 from primitive_db.decorators import create_cacher
 from primitive_db.parser import parse_command, parse_data_command
 from primitive_db.utils import (
@@ -91,7 +97,7 @@ def run_data_command(command, args, metadata, cache_result):
         if updated is None:
             return False
         save_table_data(table_name, updated)
-        record_id = updated[-1]["ID"]
+        record_id = updated[-1][ID_COLUMN]
         print(f'Запись с ID={record_id} успешно добавлена в таблицу "{table_name}".')
         return True
     where = parsed["where"]
@@ -118,12 +124,13 @@ def run_data_command(command, args, metadata, cache_result):
         return False
     save_table_data(table_name, updated)
     for row in affected:
+        record_id = row[ID_COLUMN]
         if command == "update":
             print(
-                f'Запись с ID={row["ID"]} в таблице "{table_name}" успешно обновлена.'
+                f'Запись с ID={record_id} в таблице "{table_name}" успешно обновлена.'
             )
         else:
-            print(f'Запись с ID={row["ID"]} успешно удалена из таблицы "{table_name}".')
+            print(f'Запись с ID={record_id} успешно удалена из таблицы "{table_name}".')
     return True
 
 

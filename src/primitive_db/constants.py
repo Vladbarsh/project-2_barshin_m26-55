@@ -1,5 +1,7 @@
 META_FILE = "db_meta.json"
 DATA_DIR = "data"
+ID_COLUMN = "ID"
+ID_TYPE = "int"
 VALID_TYPES = ("int", "str", "bool")
 TABLE_COMMANDS = ("create_table", "list_tables", "drop_table")
 DATA_COMMANDS = ("insert", "select", "update", "delete", "info")
