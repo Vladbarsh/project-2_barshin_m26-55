@@ -48,3 +48,55 @@ def drop_table(metadata, table_name):
     if not table_exists(metadata, table_name):
         return None
     return {name: schema for name, schema in metadata.items() if name != table_name}
+
+
+def validate_fields(schema, fields, allow_id=True):
+    """Проверяет названия полей и точное соответствие типов схеме."""
+    for name, value in fields.items():
+        if name not in schema:
+            raise ValueError(f'Ошибка: Столбец "{name}" не существует.')
+        if name == "ID" and not allow_id:
+            raise ValueError("Изменять ID нельзя.")
+        if type(value).__name__ != schema[name]:
+            raise ValueError(f"Некорректное значение: {value}. Попробуйте снова.")
+
+
+def insert(metadata, table_name, table_data, values):
+    """Проверяет новую запись и возвращает данные с добавленным ID."""
+    if not table_exists(metadata, table_name):
+        return None
+    schema = metadata[table_name]
+    columns = [name for name in schema if name != "ID"]
+    if len(values) != len(columns):
+        raise ValueError(f"Нужно значений: {len(columns)}, получено: {len(values)}.")
+    fields = dict(zip(columns, values))
+    validate_fields(schema, fields)
+    next_id = max((row["ID"] for row in table_data), default=0) + 1
+    record = {"ID": next_id, **fields}
+    return [row.copy() for row in table_data] + [record]
+
+
+def matches(row, where_clause):
+    """Проверяет условие равенства, различая int и bool."""
+    return all(
+        name in row and type(row[name]) is type(value) and row[name] == value
+        for name, value in where_clause.items()
+    )
+
+
+def select(table_data, where_clause=None):
+    """Возвращает копии всех записей или записей по условию."""
+    return [row.copy() for row in table_data if matches(row, where_clause or {})]
+
+
+def update(table_data, set_clause, where_clause):
+    """Возвращает полную таблицу с изменениями, не трогая исходные записи."""
+    return [
+        {**row, **set_clause} if matches(row, where_clause) else row.copy()
+        for row in table_data
+    ]
+
+
+def delete(table_data, where_clause):
+    """Возвращает таблицу без подходящих под условие записей."""
+    return [row.copy() for row in table_data if not matches(row, where_clause)]
